@@ -165,20 +165,6 @@ def main():
    if rtbsoft is not None:
        rtbsoft = human_to_bytes(rtbsoft)
 
-   #type = 'project' #project|user|group
-   #name = 'willie_test'
-   #mountpoint = '/export/xfs_quota_test'
-   #bhard = 1024*1024*1024*10
-   #bsoft = 1024*1024*1024*5
-   #btimer = None
-   #ihard = None
-   #isoft = None
-   #itimer = None
-   #rtbhard = None
-   #rtbsoft = None
-   #rtbtimer = None
-   #state = 'present'
-
    changed = False
 
    if getpass.getuser() != 'root' or pwd.getpwnam(getpass.getuser()).pw_uid != 0:
