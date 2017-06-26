@@ -91,6 +91,29 @@ requirements: [ xfsprogs ]
 author: "William Leemans (@bushvin) <willie@elaba.net>"
 '''
 
+EXAMPLES = r'''
+- name: Set default project soft and hard limit on /opt of 1g
+  xfs_quota:
+    type: project
+    mountpoint: /opt
+    bsoft: 1g
+    bhard: 1g
+    state: present
+
+- name: Remove the default limits on /opt
+  xfs_quota:
+    type: project
+    mountpoint: /opt
+    state: absent
+
+- name: Set default soft user inode limits on /home of 1024 inodes and hard of 2048
+  xfs_quota:
+    type: user
+    mountpoint: /home
+    isoft: 1024
+    ihard: 2048
+
+'''
 import os
 import sys
 import json
@@ -250,10 +273,10 @@ def main():
       current_bsoft, current_bhard = quota_report( mountpoint, name, type, 'b' )
 
    if isoft is not None or ihard is not None:
-      current_isoft, current_ihard = quota_report( mountpoint, name, type, 'i', module )
+      current_isoft, current_ihard = quota_report( mountpoint, name, type, 'i' )
 
    if rtbsoft is not None or rtbhard is not None:
-      current_rtbsoft, current_rtbhard = quota_report( mountpoint, name, type, 'rtb', module )
+      current_rtbsoft, current_rtbhard = quota_report( mountpoint, name, type, 'rtb' )
 
    limit = []
    if bsoft is not None and int(bsoft/1024) != current_bsoft:
