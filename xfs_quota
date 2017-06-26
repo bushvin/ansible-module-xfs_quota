@@ -120,6 +120,7 @@ def main():
    )
 
    type = module.params['type']
+   name = module.params['name']
    mountpoint = module.params['mountpoint']
    bhard = module.params['bhard']
    bsoft = module.params['bsoft']
@@ -128,6 +129,18 @@ def main():
    rtbhard = module.params['rtbhard']
    rtbsoft = module.params['rtbsoft']
    state = module.params['state']
+
+   if bhard is not None:
+       bhard = human_to_bytes(bhard)
+
+   if bsoft is not None:
+       bsoft = human_to_bytes(bsoft)
+
+   if rtbhard is not None:
+       rtbhard = human_to_bytes(rtbhard)
+
+   if rtbsoft is not None:
+       rtbsoft = human_to_bytes(rtbsoft)
 
    #type = 'project' #project|user|group
    #name = 'willie_test'
@@ -149,7 +162,7 @@ def main():
       module.fail_json(msg='You need to be root to run this module')
 
    if not os.path.ismount(mountpoint):
-      module.fail_json(msg='% is not a mountpoint' % mountpoint)
+      module.fail_json(msg='%s is not a mountpoint' % mountpoint)
 
    mp = get_fs_by_mountpoint( mountpoint )
    if mp['vfstype'] != 'xfs':
@@ -169,13 +182,13 @@ def main():
          module.fail_json(msg='User %s doesn\'t exist.' % name)
 
    if type == 'group':
-      type_arg = '-u'
+      type_arg = '-g'
       quota_default = 'root'
       if name is None:
          name = quota_default
 
       if 'gquota' not in mp['mntopts'] and 'grpquota' not in mp['mntopts'] and 'gqnoenforce' not in mp['mntopts']:
-         module.fail_json(msg='%s is not mounted with the gquota/grpquota/gqnoenforce option.' % mountpoint)
+          module.fail_json(msg='%s is not mounted with the gquota/grpquota/gqnoenforce option. (current options: %s)' % ( mountpoint, mp['mntopts']) )
       try:
          grp.getgrnam(name)
       except:
@@ -190,20 +203,21 @@ def main():
       if 'pquota' not in mp['mntopts'] and 'prjquota' not in mp['mntopts'] and 'pqnoenforce' not in mp['mntopts']:
          module.fail_json(msg='%s is not mounted with the pquota/prjquota/pqnoenforce option.' % mountpoint)
 
-      if not os.path.isfile('/etc/projects'):
+      if name != quota_default and not os.path.isfile('/etc/projects'):
          module.fail_json(msg='/etc/projects doesn\'t exist.')
 
-      if not os.path.isfile('/etc/projid'):
+      if name != quota_default and not os.path.isfile('/etc/projid'):
          module.fail_json(msg='/etc/projid doesn\'t exist.')
       
-      if name is not None and get_project_id( name ) is None:
+      if name != quota_default and name is not None and get_project_id( name ) is None:
          module.fail_json(msg='%s hasn\'t been defined in /etc/projid.' % name)
       
       prj_set = True
       if name != quota_default:
-         r = exec_quota( 'project %s' % name, mountpoint )
+         cmd = 'project %s' % name
+         r = exec_quota( cmd, mountpoint )
          if r['rc'] != 0:
-            module.fail_json(msg='Could not get project state (%s)' % proc.stderr.readlines())
+            module.fail_json(msg='Could not get project state.', cmd=cmd, retval=r)
          else:
             for line in r['stdout']:
                 if '%s - project identifier is not set' in line:
@@ -211,9 +225,10 @@ def main():
                     break
     
       if not prj_set and not module.check_mode:
-         r = exec_quota( 'project -s', mountpoint )
+         cmd = 'project -s'
+         r = exec_quota( cmd, mountpoint )
          if r['rc'] != 0:
-            module.fail_json(msg='Could not get quota realtime block report (%s)' % proc.stderr.readlines())
+            module.fail_json(msg='Could not get quota realtime block report.', cmd=cmd, retval=r)
          else:
             changed = True
       elif not prj_set and module.check_mode:
@@ -232,7 +247,7 @@ def main():
       rtbsoft = 0
    
    if bsoft is not None or bhard is not None:
-      current_bsoft, current_bhard = quota_report( mountpoint, name, type, 'b', module )
+      current_bsoft, current_bhard = quota_report( mountpoint, name, type, 'b' )
 
    if isoft is not None or ihard is not None:
       current_isoft, current_ihard = quota_report( mountpoint, name, type, 'i', module )
@@ -267,7 +282,7 @@ def main():
 
       r = exec_quota( cmd, mountpoint )
       if r['rc'] != 0:
-         module.fail_json(msg='Could not set limits (%s)' % proc.stderr.readlines())
+         module.fail_json(msg='Could not set limits.', cmd=cmd,retval=r)
       else:
          changed = True
    elif len(limit) > 0 and module.check_mode:
@@ -303,7 +318,7 @@ def quota_report( mountpoint, name, type, used_type ):
    if r['rc'] != 0:
       print(json.dumps({
          "failed" : True,
-         "msg"    : "Could not get quota report for %s (%s)." % ( used_name, r.stderr )
+         "msg"    : "Could not get quota report for %s (%s)." % ( used_name, r['stderr'] )
          }))
       sys.exit(1)
    else:
