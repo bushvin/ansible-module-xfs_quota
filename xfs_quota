@@ -1,0 +1,349 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# (c) 2017, William Leemans <willie@elaba.net>
+#
+# This file is part of Ansible
+#
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+
+DOCUMENTATION = '''
+---
+module: xfs_quota
+short_description: Set Quotas on XFS filesystems
+description:
+  - Configure Quotas on XFS filesystems. /etc/projects and /etc/projid needs to be configured before calling this module when setting project quotas.
+version_added: "2.3"
+options:
+  type:
+    description:
+      - xfs quota type
+    required: true
+    default: null
+    choices:
+      - user
+      - group
+      - project
+  name:
+    description:
+      - the name of the user, group or project to apply the quota to, if other than default
+    required: false
+    default: null
+  mountpoint:
+    description:
+      - the mountpoint on which to apply the quotas
+    required: true
+    default: null
+  bhard:
+    description:
+      - hard blocks quota limit
+    required: false
+    default: null
+  bsoft:
+    description:
+      - soft blocks quota limit
+    required: false
+    default: null
+  ihard:
+    description:
+      - hard inodes quota limit
+    required: false
+    default: null
+  isoft:
+    description:
+      - soft inodes quota limit
+    required: false
+    default: null
+  rtbhard:
+    description:
+      - hard realtime blocks quota limit
+    required: false
+    default: null
+  rtbsoft:
+    description:
+      - soft realtime blocks quota limit
+    required: false
+    default: null
+  state:
+    description:
+      - Whether to apply the limits or remove them. 
+      - When removing limit, they are set to 0, and not quite removed.
+    required: false
+    default: present
+    choices:
+      - present
+      - absent
+
+notes:
+   - Not tested on any debian based system
+requirements: [ xfsprogs ]
+author: "William Leemans (@bushvin) <willie@elaba.net>"
+'''
+
+import os
+import sys
+import json
+import subprocess
+import pwd
+import grp
+import getpass
+
+from ansible.module_utils.basic import *
+
+def main():
+
+   module = AnsibleModule(
+      argument_spec = dict(
+         type = dict( required=True, choices=['user', 'group', 'project'] ),
+         name = dict( required=False, default=None ),
+         mountpoint = dict( aliases=['path'], required=True ),
+         bhard = dict( required=False, default=None ),
+         bsoft = dict( required=False, default=None ),
+         ihard = dict( required=False, default=None ),
+         isoft = dict( required=False, default=None ),
+         rtbhard = dict( required=False, default=None ),
+         rtbsoft = dict( required=False, default=None ),
+         state = dict( required=False, default='present', choices=['present', 'absent'])
+      ),
+      supports_check_mode=True
+   )
+
+   type = module.params['type']
+   mountpoint = module.params['mountpoint']
+   bhard = module.params['bhard']
+   bsoft = module.params['bsoft']
+   ihard = module.params['ihard']
+   isoft = module.params['isoft']
+   rtbhard = module.params['rtbhard']
+   rtbsoft = module.params['rtbsoft']
+   state = module.params['state']
+
+   #type = 'project' #project|user|group
+   #name = 'willie_test'
+   #mountpoint = '/export/xfs_quota_test'
+   #bhard = 1024*1024*1024*10
+   #bsoft = 1024*1024*1024*5
+   #btimer = None
+   #ihard = None
+   #isoft = None
+   #itimer = None
+   #rtbhard = None
+   #rtbsoft = None
+   #rtbtimer = None
+   #state = 'present'
+
+   changed = False
+
+   if getpass.getuser() != 'root' or pwd.getpwnam(getpass.getuser()).pw_uid != 0:
+      module.fail_json(msg='You need to be root to run this module')
+
+   if not os.path.ismount(mountpoint):
+      module.fail_json(msg='% is not a mountpoint' % mountpoint)
+
+   mp = get_fs_by_mountpoint( mountpoint )
+   if mp['vfstype'] != 'xfs':
+      module.fail_json(msg='%s is not located on an xfs filesystem.' % path)
+
+   if type == 'user':
+      type_arg = '-u'
+      quota_default = 'root'
+      if name is None:
+         name = quota_default
+
+      if 'uquota' not in mp['mntopts'] and 'usrquota' not in mp['mntopts'] and 'quota' not in mp['mntopts'] and 'uqnoenforce' not in mp['mntopts'] and 'qnoenforce' not in mp['mntopts']:
+         module.fail_json(msg='%s is not mounted with the uquota/usrquota/quota/uqnoenforce/qnoenforce option.' % mountpoint)
+      try:
+         pwd.getpwnam(name)
+      except:
+         module.fail_json(msg='User %s doesn\'t exist.' % name)
+
+   if type == 'group':
+      type_arg = '-u'
+      quota_default = 'root'
+      if name is None:
+         name = quota_default
+
+      if 'gquota' not in mp['mntopts'] and 'grpquota' not in mp['mntopts'] and 'gqnoenforce' not in mp['mntopts']:
+         module.fail_json(msg='%s is not mounted with the gquota/grpquota/gqnoenforce option.' % mountpoint)
+      try:
+         grp.getgrnam(name)
+      except:
+         module.fail_json(msg='User %s doesn\'t exist.' % name)
+
+   elif type == 'project':
+      type_arg = '-p'
+      quota_default = '#0'
+      if name is None:
+         name = quota_default
+
+      if 'pquota' not in mp['mntopts'] and 'prjquota' not in mp['mntopts'] and 'pqnoenforce' not in mp['mntopts']:
+         module.fail_json(msg='%s is not mounted with the pquota/prjquota/pqnoenforce option.' % mountpoint)
+
+      if not os.path.isfile('/etc/projects'):
+         module.fail_json(msg='/etc/projects doesn\'t exist.')
+
+      if not os.path.isfile('/etc/projid'):
+         module.fail_json(msg='/etc/projid doesn\'t exist.')
+      
+      if name is not None and get_project_id( name ) is None:
+         module.fail_json(msg='%s hasn\'t been defined in /etc/projid.' % name)
+      
+      prj_set = True
+      if name != quota_default:
+         r = exec_quota( 'project %s' % name, mountpoint )
+         if r['rc'] != 0:
+            module.fail_json(msg='Could not get project state (%s)' % proc.stderr.readlines())
+         else:
+            for line in r['stdout']:
+                if '%s - project identifier is not set' in line:
+                    prj_set = False
+                    break
+    
+      if not prj_set and not module.check_mode:
+         r = exec_quota( 'project -s', mountpoint )
+         if r['rc'] != 0:
+            module.fail_json(msg='Could not get quota realtime block report (%s)' % proc.stderr.readlines())
+         else:
+            changed = True
+      elif not prj_set and module.check_mode:
+         changed = True
+      
+
+   changed = False
+
+   ### Set limits
+   if state == 'absent':
+      bhard = 0
+      bsoft = 0
+      ihard = 0
+      isoft = 0
+      rtbhard = 0
+      rtbsoft = 0
+   
+   if bsoft is not None or bhard is not None:
+      current_bsoft, current_bhard = quota_report( mountpoint, name, type, 'b', module )
+
+   if isoft is not None or ihard is not None:
+      current_isoft, current_ihard = quota_report( mountpoint, name, type, 'i', module )
+
+   if rtbsoft is not None or rtbhard is not None:
+      current_rtbsoft, current_rtbhard = quota_report( mountpoint, name, type, 'rtb', module )
+
+   limit = []
+   if bsoft is not None and int(bsoft/1024) != current_bsoft:
+      limit.append('bsoft=%s' % bsoft)
+
+   if bhard is not None and int(bhard/1024) != current_bhard:
+      limit.append('bhard=%s' % bhard)
+
+   if isoft is not None and isoft != current_isoft:
+      limit.append('isoft=%s' % isoft)
+
+   if ihard is not None and ihard != current_ihard:
+      limit.append('ihard=%s' % ihard)
+
+   if rtbsoft is not None and int(rtbsoft/1024) != current_rtbsoft:
+      limit.append('rtbsoft=%s' % rtbsoft)
+
+   if rtbhard is not None and int(rtbhard/1024) != current_rtbhard:
+      limit.append('rtbhard=%s' % rtbhard)
+
+   if len(limit) > 0 and not module.check_mode:
+      if name == quota_default:
+         cmd = 'limit %s -d %s' % ( type_arg, '_'.join(limit) )
+      else:
+         cmd = 'limit %s %s %s' % ( type_arg, ' '.join(limit), name )
+
+      r = exec_quota( cmd, mountpoint )
+      if r['rc'] != 0:
+         module.fail_json(msg='Could not set limits (%s)' % proc.stderr.readlines())
+      else:
+         changed = True
+   elif len(limit) > 0 and module.check_mode:
+      changed = True
+
+   ### FIXME: and now for some timers...
+   module.exit_json(changed=changed)
+
+
+def quota_report( mountpoint, name, type, used_type ):
+   soft = None
+   hard = None
+
+   if type == 'project':
+      type_arg = '-p'
+   elif type == 'user':
+      type_arg = '-u'
+   elif type == 'group':
+      type_arg = '-g'
+
+   if used_type == 'b':
+      used_arg = '-b'
+      used_name = 'blocks'
+   elif used_type == 'i':
+      used_arg = '-i'
+      used_name = 'inodes'
+   elif used_type == 'rtb':
+      used_arg = '-r'
+      used_name = 'realtime blocks'
+
+   r = exec_quota( 'report %s %s' % ( type_arg, used_arg ), mountpoint )
+
+   if r['rc'] != 0:
+      print(json.dumps({
+         "failed" : True,
+         "msg"    : "Could not get quota report for %s (%s)." % ( used_name, r.stderr )
+         }))
+      sys.exit(1)
+   else:
+      for line in r['stdout']:
+         line = line.strip().split()
+         if len(line) and line[0] == name:
+            soft = int(line[2])
+            hard = int(line[3])
+            break
+   
+   return ( soft, hard )
+
+def exec_quota( cmd, mountpoint ):
+   cmd = [ 'xfs_quota', '-x', '-c' ] + [ cmd, mountpoint ]
+   proc = subprocess.Popen( cmd , stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+   proc.wait()
+   return { 'rc': proc.returncode, 'stdout': proc.stdout.readlines(), 'stderr': proc.stderr.readlines() }
+
+def get_fs_by_mountpoint( mountpoint ):
+   mpr = None
+   with open('/proc/mounts', 'r') as s:
+      for line in s.readlines():
+         mp = line.strip().split()
+         if len(mp) == 6 and mp[1] == mountpoint:
+            mpr = dict(zip(['spec','file', 'vfstype', 'mntopts', 'freq', 'passno'], mp))
+            mpr['mntopts'] = mpr['mntopts'].split(',')
+            break
+   
+   return mpr
+
+def get_project_id( name ):
+   prjid = None
+   with open('/etc/projid', 'r') as s:
+      for line in s.readlines():
+         line = line.strip().partition(':')
+         if line[0] == name:
+            prjid = line[2]
+            break
+
+   return prjid
+
+if __name__ == '__main__':
+   main()
