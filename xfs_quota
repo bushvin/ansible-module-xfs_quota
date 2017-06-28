@@ -183,7 +183,7 @@ def main():
 
     mp = get_fs_by_mountpoint(mountpoint)
     if mp['vfstype'] != 'xfs':
-        module.fail_json(msg='%s is not located on an xfs filesystem.' % path)
+        module.fail_json(msg='%s is not located on an xfs filesystem.' % mountpoint)
 
     if quota_type == 'user':
         type_arg = '-u'
