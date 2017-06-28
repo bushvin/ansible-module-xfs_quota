@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # (c) 2017, William Leemans <willie@elaba.net>
+# (c) 2018, Emmanouil Kampitakis <info@kampitakis.de>
 #
 # This file is part of Ansible
 #
@@ -17,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
     'status': ['preview'],
@@ -179,7 +181,7 @@ def main():
     if not os.path.ismount(mountpoint):
         module.fail_json(msg='%s is not a mountpoint' % mountpoint)
 
-    mp = get_fs_by_mountpoint( mountpoint )
+    mp = get_fs_by_mountpoint(mountpoint)
     if mp['vfstype'] != 'xfs':
         module.fail_json(msg='%s is not located on an xfs filesystem.' % path)
 
@@ -338,13 +340,14 @@ def quota_report(mountpoint, name, quota_type, used_type):
         used_arg = '-r'
         used_name = 'realtime blocks'
 
-    r = exec_quota( 'report %s %s' % (type_arg, used_arg), mountpoint)
+    r = exec_quota('report %s %s' % (type_arg, used_arg), mountpoint)
 
     if r['rc'] != 0:
         print(json.dumps({
             "failed": True,
             "msg": "Could not get quota report for %s (%s)." % (used_name, r['stderr'])
-        }))
+            })
+        )
         sys.exit(1)
     else:
         for line in r['stdout']:
@@ -373,7 +376,6 @@ def get_fs_by_mountpoint(mountpoint):
                 mpr = dict(zip(['spec', 'file', 'vfstype', 'mntopts', 'freq', 'passno'], mp))
                 mpr['mntopts'] = mpr['mntopts'].split(',')
                 break
-
     return mpr
 
 
