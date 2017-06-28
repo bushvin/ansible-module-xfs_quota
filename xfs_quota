@@ -242,7 +242,7 @@ def main():
         prj_set = True
         if name != quota_default:
             cmd = 'project %s' % name
-            r = exec_quota( cmd, mountpoint )
+            r = exec_quota(cmd, mountpoint)
             if r['rc'] != 0:
                 module.fail_json(msg='Could not get project state.', cmd=cmd, retval=r)
             else:
@@ -253,7 +253,7 @@ def main():
 
         if not prj_set and not module.check_mode:
             cmd = 'project -s'
-            r = exec_quota( cmd, mountpoint )
+            r = exec_quota(cmd, mountpoint)
             if r['rc'] != 0:
                 module.fail_json(msg='Could not get quota realtime block report.', cmd=cmd, retval=r)
             else:
@@ -309,7 +309,7 @@ def main():
 
         r = exec_quota(cmd, mountpoint)
         if r['rc'] != 0:
-            module.fail_json(msg='Could not set limits.', cmd=cmd,retval=r)
+            module.fail_json(msg='Could not set limits.', cmd=cmd, retval=r)
         else:
             changed = True
     elif len(limit) > 0 and module.check_mode:
