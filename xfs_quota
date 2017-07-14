@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 # (c) 2017, William Leemans <willie@elaba.net>
+
+# Contributors:
 # (c) 2018, Emmanouil Kampitakis <info@kampitakis.de>
+
 #
 # This file is part of Ansible
 #

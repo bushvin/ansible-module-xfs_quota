@@ -2,6 +2,11 @@
 
 An ansible module to apply XFS quotas.
 
+## Authors
+This ansible module was created by [William Leemans](https://github.com/bushvin), and has seen the contribution of 
+
+- [Emmanouil Kampitakis](https://github.com/madonius)
+
 ## Installation
 
 Copy the xfs_quota file to your module library. This can typically be found in /etc/ansible/ansible.cfg
