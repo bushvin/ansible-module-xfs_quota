@@ -6,6 +6,7 @@ An ansible module to apply XFS quotas.
 This ansible module was created by [William Leemans](https://github.com/bushvin), and has seen the contribution of 
 
 - [Emmanouil Kampitakis](https://github.com/madonius)
+- [Nicolas Magliaro](https://github.com/nicomagliaro)
 
 ## Installation
 
