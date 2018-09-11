@@ -5,7 +5,7 @@
 
 # Contributors:
 # (c) 2018, Emmanouil Kampitakis <info@kampitakis.de>
-
+# (c) 2018, Nicolas Magliaro <nicolasmagliaro@gmail.com>
 #
 # This file is part of Ansible
 #
@@ -306,7 +306,7 @@ def main():
 
     if len(limit) > 0 and not module.check_mode:
         if name == quota_default:
-            cmd = 'limit %s -d %s' % (type_arg, '_'.join(limit))
+            cmd = 'limit %s -d %s' % (type_arg, ' '.join(limit))
         else:
             cmd = 'limit %s %s %s' % (type_arg, ' '.join(limit), name)
 
