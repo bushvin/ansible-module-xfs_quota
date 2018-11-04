@@ -128,7 +128,6 @@ EXAMPLES = r'''
 import os
 import sys
 import json
-import subprocess
 import pwd
 import grp
 import getpass
@@ -245,7 +244,7 @@ def main():
         prj_set = True
         if name != quota_default:
             cmd = 'project %s' % name
-            r = exec_quota(cmd, mountpoint)
+            r = exec_quota(module, cmd, mountpoint)
             if r['rc'] != 0:
                 module.fail_json(msg='Could not get project state.', cmd=cmd, retval=r)
             else:
@@ -256,7 +255,7 @@ def main():
 
         if not prj_set and not module.check_mode:
             cmd = 'project -s'
-            r = exec_quota(cmd, mountpoint)
+            r = exec_quota(module, cmd, mountpoint)
             if r['rc'] != 0:
                 module.fail_json(msg='Could not get quota realtime block report.', cmd=cmd, retval=r)
             else:
@@ -277,13 +276,13 @@ def main():
         rtbsoft = 0
 
     if bsoft is not None or bhard is not None:
-        current_bsoft, current_bhard = quota_report(mountpoint, name, quota_type, 'b')
+        current_bsoft, current_bhard = quota_report(module, mountpoint, name, quota_type, 'b')
 
     if isoft is not None or ihard is not None:
-        current_isoft, current_ihard = quota_report(mountpoint, name, quota_type, 'i')
+        current_isoft, current_ihard = quota_report(module, mountpoint, name, quota_type, 'i')
 
     if rtbsoft is not None or rtbhard is not None:
-        current_rtbsoft, current_rtbhard = quota_report(mountpoint, name, quota_type, 'rtb')
+        current_rtbsoft, current_rtbhard = quota_report(module, mountpoint, name, quota_type, 'rtb')
 
     limit = []
     if bsoft is not None and int(bsoft/1024) != current_bsoft:
@@ -310,7 +309,7 @@ def main():
         else:
             cmd = 'limit %s %s %s' % (type_arg, ' '.join(limit), name)
 
-        r = exec_quota(cmd, mountpoint)
+        r = exec_quota(module, cmd, mountpoint)
         if r['rc'] != 0:
             module.fail_json(msg='Could not set limits.', cmd=cmd, retval=r)
         else:
@@ -322,7 +321,7 @@ def main():
     module.exit_json(changed=changed)
 
 
-def quota_report(mountpoint, name, quota_type, used_type):
+def quota_report(module, mountpoint, name, quota_type, used_type):
     soft = None
     hard = None
 
@@ -343,15 +342,10 @@ def quota_report(mountpoint, name, quota_type, used_type):
         used_arg = '-r'
         used_name = 'realtime blocks'
 
-    r = exec_quota('report %s %s' % (type_arg, used_arg), mountpoint)
+    r = exec_quota(module, 'report %s %s' % (type_arg, used_arg), mountpoint)
 
     if r['rc'] != 0:
-        print(json.dumps({
-            "failed": True,
-            "msg": "Could not get quota report for %s (%s)." % (used_name, r['stderr'])
-            })
-        )
-        sys.exit(1)
+        module.fail_json(msg='Could not get quota report for %s (%s).' % (used_name, r['stderr']) )
     else:
         for line in r['stdout']:
             line = line.strip().split()
@@ -363,11 +357,10 @@ def quota_report(mountpoint, name, quota_type, used_type):
     return soft, hard
 
 
-def exec_quota(cmd, mountpoint):
+def exec_quota(module, cmd, mountpoint):
     cmd = ['xfs_quota', '-x', '-c'] + [cmd, mountpoint]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    proc.wait()
-    return {'rc': proc.returncode, 'stdout': proc.stdout.readlines(), 'stderr': proc.stderr.readlines()}
+    (rc, stdout, stderr) = module.run_command(cmd)
+    return {'rc': rc, 'stdout': stdout.split('\n'), 'stderr': stderr.split('\n')}
 
 
 def get_fs_by_mountpoint(mountpoint):
