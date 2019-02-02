@@ -59,7 +59,7 @@ options:
       - soft realtime blocks quota limit
   state:
     description:
-      - Whether to apply the limits or remove them. 
+      - Whether to apply the limits or remove them.
       - When removing limit, they are set to 0, and not quite removed.
     default: present
     choices:
@@ -68,7 +68,7 @@ options:
 
 notes:
    - Not tested on any debian based system
-requirements: 
+requirements:
    - xfsprogs
 '''
 
@@ -95,6 +95,7 @@ EXAMPLES = r'''
     ihard: 2048
 
 '''
+
 import os
 import sys
 import json
@@ -232,10 +233,9 @@ def main():
         elif not prj_set and module.check_mode:
             changed = True
 
+    changed = False
 
-    changed=False
-
-    ### Set limits
+    # Set limits
     if state == 'absent':
         bhard = 0
         bsoft = 0
@@ -313,7 +313,7 @@ def quota_report(module, mountpoint, name, quota_type, used_type):
     r = exec_quota(module, 'report %s %s' % (type_arg, used_arg), mountpoint)
 
     if r['rc'] != 0:
-        module.fail_json(msg='Could not get quota report for %s (%s).' % (used_name, r['stderr']) )
+        module.fail_json(msg='Could not get quota report for %s (%s).' % (used_name, r['stderr']))
     else:
         for line in r['stdout']:
             line = line.strip().split()
