@@ -327,7 +327,7 @@ def quota_report(module, mountpoint, name, quota_type, used_type):
 
 def exec_quota(module, cmd, mountpoint):
     cmd = ['xfs_quota', '-x', '-c'] + [cmd, mountpoint]
-    (rc, stdout, stderr) = module.run_command(cmd)
+    (rc, stdout, stderr) = module.run_command(cmd, use_unsafe_shell=True)
     return {'rc': rc, 'stdout': stdout.split('\n'), 'stderr': stderr.split('\n')}
 
 
