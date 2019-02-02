@@ -22,12 +22,12 @@ short_description: Set Quotas on XFS filesystems
 description:
   - Configure Quotas on XFS filesystems. /etc/projects and /etc/projid needs to be configured before calling this module when setting project quotas.
 version_added: "2.3"
+author: "William Leemans (@bushvin) <willie@elaba.net>"
 options:
   type:
     description:
-      - xfs quota type
+      - The xfs quota type.
     required: true
-    default: null
     choices:
       - user
       - group
@@ -35,48 +35,32 @@ options:
   name:
     description:
       - the name of the user, group or project to apply the quota to, if other than default
-    required: false
-    default: null
   mountpoint:
     description:
       - the mountpoint on which to apply the quotas
     required: true
-    default: null
   bhard:
     description:
       - hard blocks quota limit
-    required: false
-    default: null
   bsoft:
     description:
       - soft blocks quota limit
-    required: false
-    default: null
   ihard:
     description:
       - hard inodes quota limit
-    required: false
-    default: null
   isoft:
     description:
       - soft inodes quota limit
-    required: false
-    default: null
   rtbhard:
     description:
       - hard realtime blocks quota limit
-    required: false
-    default: null
   rtbsoft:
     description:
       - soft realtime blocks quota limit
-    required: false
-    default: null
   state:
     description:
       - Whether to apply the limits or remove them. 
       - When removing limit, they are set to 0, and not quite removed.
-    required: false
     default: present
     choices:
       - present
@@ -84,8 +68,8 @@ options:
 
 notes:
    - Not tested on any debian based system
-requirements: [ xfsprogs ]
-author: "William Leemans (@bushvin) <willie@elaba.net>"
+requirements: 
+   - xfsprogs
 '''
 
 EXAMPLES = r'''
