@@ -100,7 +100,6 @@ import sys
 import json
 import pwd
 import grp
-import getpass
 
 from ansible.module_utils.basic import *
 
@@ -147,7 +146,7 @@ def main():
 
     changed = False
 
-    if getpass.getuser() != 'root' or pwd.getpwnam(getpass.getuser()).pw_uid != 0:
+    if os.getuid() != 0:
         module.fail_json(msg='You need to be root to run this module')
 
     if not os.path.ismount(mountpoint):
