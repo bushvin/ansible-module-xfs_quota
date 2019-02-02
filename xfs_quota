@@ -317,7 +317,6 @@ def main():
     elif len(limit) > 0 and module.check_mode:
         changed = True
 
-    ### FIXME: and now for some timers...
     module.exit_json(changed=changed)
 
 
