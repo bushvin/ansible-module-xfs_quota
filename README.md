@@ -8,6 +8,12 @@ This ansible module was created by [William Leemans](https://github.com/bushvin)
 - [Emmanouil Kampitakis](https://github.com/madonius)
 - [Nicolas Magliaro](https://github.com/nicomagliaro)
 
+## Deprectaion notice
+
+This module is included in Ansible as of v 2.8.
+
+This repository will no longer be maintained.
+
 ## Installation
 
 Copy the xfs_quota file to your module library. This can typically be found in /etc/ansible/ansible.cfg
