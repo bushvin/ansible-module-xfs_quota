@@ -262,12 +262,12 @@ def main():
                 module.fail_json(msg='Could not get project state.', **result)
             else:
                 for line in stdout.split('\n'):
-                    if "Project Id '%s' - is not set." in line or 'project identifier is not set' in line:
+                    if "Project Id '%s' - is not set." % name in line or 'project identifier is not set' in line:
                         prj_set = False
                         break
 
         if not prj_set and not module.check_mode:
-            cmd = 'project -s'
+            cmd = 'project -s %s' % name
             rc, stdout, stderr = exec_quota(module, cmd, mountpoint)
             if rc != 0:
                 result['cmd'] = cmd
